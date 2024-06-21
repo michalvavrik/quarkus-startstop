@@ -20,7 +20,6 @@
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
         <commons.io.version>2.11.0</commons.io.version>
         <commons.lang.version>3.12.0</commons.lang.version>
-        <jboss-logging.version>3.5.0.Final</jboss-logging.version>
         <log4j.version>2.19.0</log4j.version>
         <playwright.version>1.30.0</playwright.version>
         <formatter-maven-plugin.version>2.22.0</formatter-maven-plugin.version>
@@ -33,11 +32,21 @@
         <src.sort.goal>sort</src.sort.goal>
         <xml.format.goal>xml-format</xml.format.goal>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>quarkus-bom</artifactId>
+                <version>${quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>${jboss-logging.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
