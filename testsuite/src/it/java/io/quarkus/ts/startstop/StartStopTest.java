@@ -6,6 +6,8 @@ import io.quarkus.ts.startstop.utils.Commands;
 import io.quarkus.ts.startstop.utils.LogBuilder;
 import io.quarkus.ts.startstop.utils.Logs;
 import io.quarkus.ts.startstop.utils.MvnCmds;
+import io.quarkus.ts.startstop.utils.OpenTelemetryCollector;
+import io.quarkus.ts.startstop.utils.UnitTestResource;
 import io.quarkus.ts.startstop.utils.WebpageTester;
 import org.apache.commons.io.FileUtils;
 import org.jboss.logging.Logger;
@@ -27,6 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static io.quarkus.ts.startstop.utils.Commands.cleanTarget;
 import static io.quarkus.ts.startstop.utils.Commands.dropCaches;
@@ -66,6 +69,10 @@ public class StartStopTest {
     public static final String BASE_DIR = getBaseDir();
 
     public void testRuntime(TestInfo testInfo, Apps app, MvnCmds mvnCmds) throws IOException, InterruptedException {
+        testRuntime(testInfo, app, mvnCmds, UnitTestResource.NOOP_SUPPLIER);
+    }
+
+    public void testRuntime(TestInfo testInfo, Apps app, MvnCmds mvnCmds, Supplier<UnitTestResource> testResourceSupplier) throws IOException, InterruptedException {
         LOGGER.info("Testing app: " + app.toString() + ", mode: " + mvnCmds.toString());
         LOGGER.info("Cleanup Enabled: " + !disableCleanup());
 
@@ -77,7 +84,7 @@ public class StartStopTest {
         Optional<AsyncProfiler> asyncProfiler = mvnCmds == MvnCmds.JVM ? AsyncProfiler.create() : Optional.empty();
         String cn = testInfo.getTestClass().get().getCanonicalName();
         String mn = testInfo.getTestMethod().get().getName();
-        try {
+        try(var testResource = testResourceSupplier.get()) {
             // Cleanup
             asyncProfiler.ifPresent(ignore -> AsyncProfiler.cleanProfilingResults(app));
             cleanTarget(app);
@@ -120,7 +127,7 @@ public class StartStopTest {
             List<Long> timeToFirstOKRequestList = new ArrayList<>(10);
             int iterations = Integer.getInteger("start-stop.iterations", 10);
             boolean coldStart = Boolean.getBoolean("start-stop.cold-start");
-            for (int i = 0; i < iterations; i++) {
+            for (int i = 0; i < iterations; i++, testResource.reset()) {
                 // Run
                 LOGGER.info("Running... round " + i);
                 runLogA = new File(appDir.getAbsolutePath() + File.separator + "logs" + File.separator + mvnCmds.name().toLowerCase() + "-run.log");
@@ -222,12 +229,12 @@ public class StartStopTest {
 
     @Test
     public void fullMicroProfileJVM(TestInfo testInfo) throws IOException, InterruptedException {
-        testRuntime(testInfo, Apps.FULL_MICROPROFILE, MvnCmds.JVM);
+        testRuntime(testInfo, Apps.FULL_MICROPROFILE, MvnCmds.JVM, OpenTelemetryCollector::new);
     }
 
     @Test
     @Tag("native")
     public void fullMicroProfileNative(TestInfo testInfo) throws IOException, InterruptedException {
-        testRuntime(testInfo, Apps.FULL_MICROPROFILE, MvnCmds.NATIVE);
+        testRuntime(testInfo, Apps.FULL_MICROPROFILE, MvnCmds.NATIVE, OpenTelemetryCollector::new);
     }
 }
